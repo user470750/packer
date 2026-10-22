@@ -1,0 +1,10 @@
+name = "packer"
+version = "0.1.0"
+defaultTargets = ["packer"]
+
+[[lean_lib]]
+name = "Packer"
+
+[[lean_exe]]
+name = "packer"
+root = "Main"
