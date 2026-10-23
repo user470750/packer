@@ -1,10 +1,7 @@
 name = "packer"
 version = "0.1.0"
-defaultTargets = ["packer"]
+defaultTargets = ["Packer"]
 
 [[lean_lib]]
 name = "Packer"
-
-[[lean_exe]]
-name = "packer"
-root = "Main"
+leanOptions = { linter.missingDocs = true }
