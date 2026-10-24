@@ -19,17 +19,21 @@ open Lean Lean.Parser
 Declares a structure whose fields are packed into a `UInt64`, and therefore is not allocated on the
 heap.
 
-Reuses the syntax of Lean's `structure` command, with the keyword `packed` before `structure`:
+Each field is declared as `name : type with width`, where `width` is the number of bits it takes in
+the `UInt64`, and can have a docstring. The declaration supports modifiers, such as a docstring or
+`private`:
 
 ```lean
 /-- A time of day. -/
-private packed structure Time where
-  hours   : UInt8
-  minutes : UInt8
-  seconds : UInt8
+private packed_structure Time where
+  hours   : UInt8 with 8
+  minutes : UInt8 with 8
+  seconds : UInt8 with 8
 ```
 -/
 syntax
-declModifiers "packed" Command.structure : command
+declModifiers
+"packed_structure" ident "where"
+  manyIndent((docComment)? ident ":" term "with" num) : command
 
 end Packer
