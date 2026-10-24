@@ -1,7 +1,12 @@
 name = "packer"
 version = "0.1.0"
 defaultTargets = ["Packer"]
+testDriver = "PackerTest"
 
 [[lean_lib]]
 name = "Packer"
 leanOptions = { linter.missingDocs = true }
+
+[[lean_lib]]
+name = "PackerTest"
+globs = ["PackerTest.+"]
