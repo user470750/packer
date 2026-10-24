@@ -72,9 +72,12 @@ def buildStruct (name : Ident) (modifiers : TSyntax ``Parser.Command.declModifie
 /--
 Builds the constructor for the structure generated from the `packed_structure` declaration. The
 generated constructor takes the values of the fields together with proofs that they fit into their
-bits, and packs the values into the field `bits : UInt64` in the order of the arguments.
+bits, and packs the values into the field `bits : UInt64` in the order of the arguments. It takes
+the visibility of the generated structure.
 -/
-def buildConstructor (name : Ident) (fields : Array SourceField) : m Command := do
+def buildConstructor (name : Ident)
+    (visibility? : Option (TSyntax ``Parser.Command.visibility))
+    (fields : Array SourceField) : m Command := do
   let args ← fields.mapM fun ⟨_, argName, argType, argWidth⟩ =>
     `(bracketedBinder|
       ($argName : {n : $argType // (Packer.Packable.toUInt64 n).toNat < 2 ^ $argWidth}))
@@ -91,6 +94,7 @@ def buildConstructor (name : Ident) (fields : Array SourceField) : m Command := 
     the values into the field `bits : UInt64` in the order of the arguments.
     -/
     @[inline]
+    $[$visibility?]?
     def $(mkIdent (name.getId.str "pack")) $[$args]* : $name :=
       ⟨$returnValue⟩
   )
@@ -98,15 +102,18 @@ def buildConstructor (name : Ident) (fields : Array SourceField) : m Command := 
 /--
 Builds getters for the fields of the `packed_structure` declaration: each one extracts the packed
 value of its field from `bits : UInt64` in the generated structure with a shift and a bit mask, and
-returns it converted to the type of the field. Each getter takes the docstring of its field, if any.
+returns it converted to the type of the field. Each getter takes the docstring of its field, if any,
+and the visibility of the generated structure.
 -/
-def buildGetters (name : Ident) (fields : Array SourceField) : m (Array Command) := do
+def buildGetters (name : Ident) (visibility? : Option (TSyntax ``Parser.Command.visibility))
+    (fields : Array SourceField) : m (Array Command) := do
   let mut offset := 0
   let mut getters := #[]
   for ⟨doc?, argName, argType, argWidth⟩ in fields do
     getters := getters.push (← `(
       $[$doc?:docComment]?
       @[inline]
+      $[$visibility?]?
       def $(mkIdent (name.getId ++ argName.getId)) (packed : $name) : $argType :=
         Packer.Packable.ofUInt64
           ((packed.bits >>> $(quote offset)) &&& $(quote ((1 <<< argWidth.getNat) - 1)))
@@ -122,9 +129,11 @@ Builds the code of a `packed_structure` declaration:
 * the getters for the fields of the declaration.
 -/
 def build (struct : SourceStructure) : m (Array Command) := do
+  -- The visibility is the optional third child of `declModifiers`.
+  let visibility? := struct.modifiers.raw[2].getOptional?.map (⟨·⟩)
   return #[
     ← buildStruct struct.name struct.modifiers,
-    ← buildConstructor struct.name struct.fields
-  ] ++ (← buildGetters struct.name struct.fields)
+    ← buildConstructor struct.name visibility? struct.fields
+  ] ++ (← buildGetters struct.name visibility? struct.fields)
 
 end Packer.Internal
