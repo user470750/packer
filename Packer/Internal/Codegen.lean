@@ -78,14 +78,18 @@ the visibility of the generated structure.
 def buildConstructor (name : Ident)
     (visibility? : Option (TSyntax ``Parser.Command.visibility))
     (fields : Array SourceField) : m Command := do
-  let args ← fields.mapM fun ⟨_, argName, argType, argWidth⟩ =>
-    `(bracketedBinder|
-      ($argName : {n : $argType // (Packer.Packable.toUInt64 n).toNat < 2 ^ $argWidth}))
+  let mut args := #[]
+  for ⟨_, argName, argType, _⟩ in fields do
+    args := args.push (←`(bracketedBinder| ($argName : $argType)))
+  for ⟨_, argName, _, argWidth⟩ in fields do
+    args := args.push (←`(bracketedBinder|
+      ($(mkIdent (argName.getId.appendBefore "h_")) :
+      (Packer.Packable.toUInt64 $argName).toNat < 2 ^ $argWidth := by decide)))
   let mut offset := 0
   let mut returnValue ← `((0 : UInt64))
   for ⟨_, argName, _, argWidth⟩ in fields do
     returnValue ← `(
-      $returnValue ||| (Packer.Packable.toUInt64 ($argName).val <<< $(quote offset))
+      $returnValue ||| (Packer.Packable.toUInt64 $argName <<< $(quote offset))
     )
     offset := offset + argWidth.getNat
   `(
